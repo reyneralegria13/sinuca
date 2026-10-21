@@ -15,6 +15,7 @@
     "preview": "npm run preview -w @sinuca/web",
     "test": "vitest run",
     "test:watch": "vitest",
+    "ai:benchmark": "node scripts/ai-benchmark.mjs",
     "typecheck": "tsc -p packages/core --noEmit && tsc -p apps/web --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",
