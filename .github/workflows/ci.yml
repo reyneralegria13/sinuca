@@ -19,7 +19,9 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
+      - run: npm run ai:benchmark
       - run: npm run build
+      - run: npm run build:single
 
   commits:
     if: github.event_name == 'pull_request'
