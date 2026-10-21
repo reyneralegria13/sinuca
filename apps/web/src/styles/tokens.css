@@ -1,20 +1,17 @@
-/* Identidade visual: salão escuro, feltro verde e dourado de destaque. Tema único escuro por escolha. */
-:root {
-  --bg: #070d0b;
-  --surface: #10211b;
-  --line: #22413a;
-  --text: #ecf3ee;
-  --muted: #8fa89c;
-  --accent: #e7b54d;
-  --player-1: #52b8ff;
-  --player-2: #ff8d5e;
-  --foul: #ff6b5b;
-  --success: #57d39a;
-
-  --font-display: 'Teko', 'Barlow Semi Condensed', system-ui, sans-serif;
+﻿:root {
+  --bg: #090e10;
+  --surface: #131e21;
+  --line: #2b393a;
+  --text: #f3efe6;
+  --muted: #92a4a2;
+  --accent: #d9b878;
+  --player-1: #88c5ba;
+  --player-2: #d9ac83;
+  --foul: #ff8b7c;
+  --success: #78d4aa;
+  --font-display: 'Barlow Semi Condensed', system-ui, sans-serif;
   --font-body: 'Barlow Semi Condensed', system-ui, -apple-system, 'Segoe UI', sans-serif;
-
-  --radius: 12px;
-  --gap: 10px;
+  --radius: 16px;
+  --gap: 18px;
   color-scheme: dark;
 }

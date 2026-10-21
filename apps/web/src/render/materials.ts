@@ -2,7 +2,7 @@ import { Color, DoubleSide, MeshPhysicalMaterial, MeshStandardMaterial } from 't
 import { createFeltTextures } from './textures/feltTexture';
 import { createWoodTextures, MAPLE, WALNUT } from './textures/woodTexture';
 
-export const FELT_COLOR = '#1c6a52';
+export const FELT_COLOR = '#197c65';
 
 export function createMaterials(maxAnisotropy: number) {
   const felt = createFeltTextures(maxAnisotropy);
@@ -22,7 +22,7 @@ export function createMaterials(maxAnisotropy: number) {
       envMapIntensity: 0.25,
     }),
     cushion: new MeshPhysicalMaterial({
-      color: new Color('#185f49'),
+      color: new Color('#125b49'),
       map: felt.map,
       bumpMap: felt.bumpMap,
       bumpScale: 0.35,
@@ -39,6 +39,12 @@ export function createMaterials(maxAnisotropy: number) {
       clearcoat: 0.85,
       clearcoatRoughness: 0.18,
       envMapIntensity: 0.7,
+    }),
+    brass: new MeshPhysicalMaterial({
+      color: '#b99c60',
+      metalness: 0.8,
+      roughness: 0.38,
+      envMapIntensity: 0.65,
     }),
     leather: new MeshStandardMaterial({ color: '#170d07', roughness: 0.55, envMapIntensity: 0.3 }),
     pocketLiner: new MeshStandardMaterial({

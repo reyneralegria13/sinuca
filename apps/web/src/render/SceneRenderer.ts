@@ -3,6 +3,8 @@ import {
   Color,
   Group,
   HemisphereLight,
+  Mesh,
+  Texture,
   PCFSoftShadowMap,
   PerspectiveCamera,
   Plane,
@@ -48,18 +50,22 @@ export class SceneRenderer {
     container: HTMLElement,
     private readonly game: GameController,
   ) {
-    this.renderer = new WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    this.renderer = new WebGLRenderer({
+      antialias: true,
+      alpha: true,
+      powerPreference: 'high-performance',
+    });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.outputColorSpace = SRGBColorSpace;
     this.renderer.toneMapping = ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
+    this.renderer.toneMappingExposure = 1.15;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = PCFSoftShadowMap;
     this.renderer.domElement.style.display = 'block';
     this.renderer.domElement.style.touchAction = 'none';
     container.appendChild(this.renderer.domElement);
 
-    this.scene.background = new Color('#070d0b');
+    this.renderer.setClearColor(new Color('#090e10'), 0);
     const pmrem = new PMREMGenerator(this.renderer);
     this.scene.environment = pmrem.fromScene(new RoomEnvironment(this.renderer), 0.04).texture;
     pmrem.dispose();
@@ -78,9 +84,9 @@ export class SceneRenderer {
     this.guide = new AimGuide(game.table);
     this.world.add(this.guide.group);
 
-    this.scene.add(new HemisphereLight(0xe6efe9, 0x1a120c, 0.45));
+    this.scene.add(new HemisphereLight(0xe6efe9, 0x1a120c, 0.65));
     for (const x of [L / 4, (L * 3) / 4]) {
-      const lamp = new SpotLight(0xfff1dc, 3.1, 0, 0.95, 0.75, 0);
+      const lamp = new SpotLight(0xfff1dc, 3.6, 0, 0.95, 0.75, 0);
       lamp.position.set(x, LAMP_HEIGHT, W / 2);
       lamp.target.position.set(x, 0, W / 2);
       lamp.castShadow = true;
@@ -94,6 +100,7 @@ export class SceneRenderer {
   }
 
   resize(width: number, height: number): void {
+    if (width <= 0 || height <= 0) return;
     this.renderer.setSize(width, height, false);
     this.renderer.domElement.style.width = `${width}px`;
     this.renderer.domElement.style.height = `${height}px`;
@@ -144,6 +151,26 @@ export class SceneRenderer {
   }
 
   dispose(): void {
+    const geometries = new Set<Mesh['geometry']>();
+    const materials = new Set<import('three').Material>();
+    const textures = new Set<Texture>();
+    this.scene.traverse((object) => {
+      if (object instanceof Mesh) {
+        geometries.add(object.geometry);
+        for (const material of Array.isArray(object.material)
+          ? object.material
+          : [object.material]) {
+          materials.add(material);
+          for (const value of Object.values(material))
+            if (value instanceof Texture) textures.add(value);
+        }
+      }
+      if (object instanceof SpotLight) object.shadow.dispose();
+    });
+    for (const geometry of geometries) geometry.dispose();
+    for (const material of materials) material.dispose();
+    for (const texture of textures) texture.dispose();
+    this.scene.environment?.dispose();
     this.renderer.dispose();
     this.renderer.domElement.remove();
   }

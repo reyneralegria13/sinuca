@@ -8,7 +8,10 @@ export function BallChip({ id, out }: { id: number; out?: boolean }) {
     <span
       className={`chip${out ? ' out' : ''}${id === 8 ? ' eight' : ''}`}
       style={{ background }}
-      aria-hidden
-    />
+      aria-label={`Bola ${id}${out ? ' fora de jogo' : ''}`}
+      title={`Bola ${id}`}
+    >
+      <span>{id}</span>
+    </span>
   );
 }

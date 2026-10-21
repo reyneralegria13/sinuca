@@ -88,6 +88,15 @@ export function buildTableModel(table: TableGeometry, mat: Materials): Group {
   );
 
   // Caçapas: tubo escuro, fundo e couro sobre o trilho.
+  const trimOuter = roundedRect(-rw + 15, -rw + 15, L + rw * 2 - 30, W + rw * 2 - 30, 56, 12);
+  const trimInner = roundedRect(-rw + 18, -rw + 18, L + rw * 2 - 36, W + rw * 2 - 36, 53, 12);
+  group.add(
+    mesh(
+      flat(new ShapeGeometry(shapeFrom(trimOuter, [trimInner])), HEIGHTS.railTop + 0.9),
+      mat.brass,
+    ),
+  );
+
   for (const p of table.pockets) {
     const tube = mesh(
       new CylinderGeometry(p.radius, p.radius * 0.9, HEIGHTS.pocketDepth, 48, 1, true),

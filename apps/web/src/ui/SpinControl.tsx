@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import type { Spin } from '@sinuca/core';
 import type { GameController } from '../game/GameController';
+import { Dialog } from './Dialog';
 
 const LIMIT = 0.8;
 
@@ -43,46 +44,39 @@ export function SpinControl({ game, spin }: { game: GameController; spin: Spin }
         type="button"
         className="spin-button"
         aria-label="Escolher efeito na bola branca"
+        disabled={!game.canAct}
         onClick={() => toggle(true)}
       >
         <CueBallFace spin={spin} size={40} />
       </button>
       {open && (
-        <div
-          className="modal"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="spin-title"
-          onClick={() => toggle(false)}
-        >
-          <div className="sheet" onClick={(e) => e.stopPropagation()}>
-            <h2 id="spin-title">Efeito</h2>
-            <p>
-              Toque onde o taco vai bater. Em cima a branca segue, embaixo ela puxa e nos lados muda
-              o ângulo na tabela.
-            </p>
-            <div
-              className="spin-pad"
-              onPointerDown={(e) => {
-                e.currentTarget.setPointerCapture(e.pointerId);
-                dragging.current = true;
-                setFrom(e);
-              }}
-              onPointerMove={(e) => dragging.current && setFrom(e)}
-              onPointerUp={() => (dragging.current = false)}
-            >
-              <CueBallFace spin={spin} size={200} className="big" />
-            </div>
-            <div className="row">
-              <button type="button" onClick={() => game.setSpin({ x: 0, y: 0 })}>
-                Centralizar
-              </button>
-              <button type="button" className="primary" onClick={() => toggle(false)}>
-                Pronto
-              </button>
-            </div>
+        <Dialog title="Controle o efeito" id="spin-title" onClose={() => toggle(false)}>
+          <p>
+            Toque onde o taco vai bater. Em cima a branca segue, embaixo ela puxa e nos lados muda o
+            ângulo na tabela.
+          </p>
+          <div
+            className="spin-pad"
+            onPointerDown={(e) => {
+              e.currentTarget.setPointerCapture(e.pointerId);
+              dragging.current = true;
+              setFrom(e);
+            }}
+            onPointerMove={(e) => dragging.current && setFrom(e)}
+            onPointerUp={() => (dragging.current = false)}
+            onPointerCancel={() => (dragging.current = false)}
+          >
+            <CueBallFace spin={spin} size={200} className="big" />
           </div>
-        </div>
+          <div className="row">
+            <button type="button" onClick={() => game.setSpin({ x: 0, y: 0 })}>
+              Centralizar
+            </button>
+            <button type="button" className="primary" onClick={() => toggle(false)}>
+              Pronto
+            </button>
+          </div>
+        </Dialog>
       )}
     </>
   );
