@@ -1,6 +1,6 @@
 import { GROUP_BALLS, type PlayerIndex } from '@sinuca/core';
 import type { GameView } from '../game/GameController';
-import { GROUP_LABEL, PLAYER_NAMES } from '../game/messages';
+import { GROUP_LABEL } from '../game/messages';
 import { BallChip } from './BallChip';
 
 export function PlayerCard({ player, view }: { player: PlayerIndex; view: GameView }) {
@@ -20,13 +20,21 @@ export function PlayerCard({ player, view }: { player: PlayerIndex; view: GameVi
   return (
     <section
       className={`player p${player}${active ? ' active' : ''}${late ? ' late' : ''}`}
-      aria-label={PLAYER_NAMES[player]}
+      aria-label={view.playerNames[player]}
     >
-      <div className="avatar">{player + 1}</div>
+      <div className="avatar">{player === 1 && view.mode === 'computer' ? 'IA' : player + 1}</div>
       <div className="name">
-        {PLAYER_NAMES[player]}
+        {view.playerNames[player]}
         {active && (
-          <span className="turn-badge">{view.phase === 'rolling' ? 'Em jogo' : 'Sua vez'}</span>
+          <span className="turn-badge">
+            {view.phase === 'rolling'
+              ? 'Em jogo'
+              : view.computerTurn
+                ? view.computerStatus === 'aiming'
+                  ? 'Mirando'
+                  : 'Pensando'
+                : 'Sua vez'}
+          </span>
         )}
       </div>
       <div className="status">{status}</div>

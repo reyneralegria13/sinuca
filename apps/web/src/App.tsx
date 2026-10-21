@@ -13,16 +13,21 @@ import { TableView } from './ui/TableView';
 import { Toast } from './ui/Toast';
 import { HelpDialog } from './ui/HelpDialog';
 import { SettingsDialog } from './ui/SettingsDialog';
-import { PLAYER_NAMES } from './game/messages';
+import { NewMatchDialog } from './ui/NewMatchDialog';
+import { createComputerTask } from './ai/workerClient';
 
 export function App() {
   const sound = useMemo(() => new SoundEngine(), []);
-  const game = useMemo(() => new GameController(sound), [sound]);
+  const game = useMemo(() => {
+    const controller = new GameController(sound, Math.random, createComputerTask);
+    controller.startMatch('computer', 'medium');
+    return controller;
+  }, [sound]);
   const view = useGameView(game);
   const portrait = useIsPortrait();
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(sound.volume);
-  const [panel, setPanel] = useState<'help' | 'sound' | null>(null);
+  const [panel, setPanel] = useState<'help' | 'sound' | 'match' | null>(null);
   const openPanel = (next: typeof panel) => {
     game.setPaused(next !== null);
     setPanel(next);
@@ -32,6 +37,8 @@ export function App() {
     () => bindKeyboard(game, () => game.paused || view.winner !== null),
     [game, view.winner],
   );
+
+  useEffect(() => () => game.dispose(), [game]);
 
   useEffect(() => {
     const unlock = () => void sound.unlock();
@@ -47,7 +54,7 @@ export function App() {
       <Hud
         view={view}
         muted={muted}
-        onNewGame={() => game.newGame()}
+        onNewGame={() => openPanel('match')}
         onHelp={() => openPanel('help')}
         onSettings={() => openPanel('sound')}
         onToggleSound={() => {
@@ -92,7 +99,11 @@ export function App() {
             ? 'Partida encerrada'
             : view.phase === 'rolling'
               ? 'Bolas em movimento'
-              : `Vez do ${PLAYER_NAMES[view.turn]}`}
+              : view.computerTurn
+                ? view.computerStatus === 'aiming'
+                  ? 'Computador preparando a tacada'
+                  : 'Computador pensando…'
+                : `Vez do ${view.playerNames[view.turn]}`}
         </span>
         <span className="keyboard-hint">
           <kbd>←</kbd>
@@ -114,7 +125,21 @@ export function App() {
           }}
         />
       )}
-      <GameOverDialog winner={view.winner} onAgain={() => game.newGame()} />
+      {panel === 'match' && (
+        <NewMatchDialog
+          view={view}
+          onClose={() => openPanel(null)}
+          onStart={(mode, difficulty) => {
+            game.startMatch(mode, difficulty);
+            openPanel(null);
+          }}
+        />
+      )}
+      <GameOverDialog
+        winner={view.winner}
+        playerNames={view.playerNames}
+        onAgain={() => game.newGame()}
+      />
     </div>
   );
 }

@@ -144,7 +144,9 @@ export class SceneRenderer {
       g.aim,
       g.power * 240,
       g.spin,
-      g.canAct && cue.active && !this.draggingCue,
+      (g.canAct || (g.computerTurn && g.computerStatus === 'aiming' && !g.paused)) &&
+        cue.active &&
+        !this.draggingCue,
     );
     this.guide.update(g, time, this.draggingCue);
     this.renderer.render(this.scene, this.camera);

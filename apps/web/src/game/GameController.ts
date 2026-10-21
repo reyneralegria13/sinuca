@@ -1,5 +1,7 @@
 import {
   advance,
+  cloneAiBalls,
+  emergencyComputerPlan,
   applyCueStrike,
   BALL_RADIUS,
   createMatch,
@@ -21,6 +23,11 @@ import {
   SHOT_CLOCK_SECONDS,
   ShotRecorder,
   TABLE_9FT,
+  type AiDifficulty,
+  type AiPlan,
+  type AiPlanner,
+  type AiSnapshot,
+  type AiTask,
   type Ball,
   type Group,
   type MatchState,
@@ -36,6 +43,8 @@ import {
 import { describeOutcome, gameOverText, PLAYER_NAMES, type ToastTone } from './messages';
 
 export type Phase = 'aiming' | 'rolling' | 'over';
+export type GameMode = 'local' | 'computer';
+export type ComputerStatus = 'idle' | 'thinking' | 'aiming';
 
 export interface GameAudio {
   cue(speed: number, pan?: number): void;
@@ -60,6 +69,11 @@ export interface Toast {
 
 /** Estado resumido para a interface (React). Muda só quando algo visível muda. */
 export interface GameView {
+  mode: GameMode;
+  difficulty: AiDifficulty;
+  playerNames: [string, string];
+  computerStatus: ComputerStatus;
+  computerTurn: boolean;
   phase: Phase;
   turn: PlayerIndex;
   groups: [Group | null, Group | null];
@@ -94,6 +108,16 @@ export class GameController {
   clock = SHOT_CLOCK_SECONDS;
   paused = false;
   falling: FallingBall[] = [];
+  mode: GameMode = 'local';
+  difficulty: AiDifficulty = 'medium';
+  computerStatus: ComputerStatus = 'idle';
+  lastComputerPlan: AiPlan | null = null;
+
+  private computerTask: AiTask | null = null;
+  private computerPlan: AiPlan | null = null;
+  private computerGeneration = 0;
+  private computerElapsed = 0;
+  private computerAimElapsed = 0;
 
   private sim!: Simulation;
   private recorder: ShotRecorder | null = null;
@@ -125,6 +149,7 @@ export class GameController {
   constructor(
     private readonly audio?: GameAudio,
     private readonly random: () => number = Math.random,
+    private readonly computerPlanner?: AiPlanner,
   ) {
     this.newGame(0);
   }
@@ -134,6 +159,8 @@ export class GameController {
   }
 
   newGame(firstPlayer?: PlayerIndex): void {
+    this.cancelComputer();
+    this.lastComputerPlan = null;
     const starter =
       firstPlayer ?? (this.match.winner !== null ? (this.match.winner === 0 ? 1 : 0) : 0);
     this.balls = createRack(this.table, this.random);
@@ -148,7 +175,29 @@ export class GameController {
     this.clock = SHOT_CLOCK_SECONDS;
     this.winnerText = null;
     this.aim = 0;
-    this.showToast(`Saída do ${PLAYER_NAMES[starter]}`, 'info');
+    this.showToast(`Saída: ${this.playerNames[starter]}`, 'info');
+  }
+
+  startMatch(
+    mode: GameMode,
+    difficulty: AiDifficulty = this.difficulty,
+    firstPlayer: PlayerIndex = 0,
+  ): void {
+    this.mode = mode;
+    this.difficulty = difficulty;
+    this.newGame(firstPlayer);
+  }
+
+  get playerNames(): [string, string] {
+    return [PLAYER_NAMES[0], this.mode === 'computer' ? 'Computador' : PLAYER_NAMES[1]];
+  }
+
+  get computerTurn(): boolean {
+    return this.mode === 'computer' && this.match.turn === 1 && this.match.winner === null;
+  }
+
+  private describePlayer(text: string): string {
+    return this.mode === 'computer' ? text.replaceAll(PLAYER_NAMES[1], 'Computador') : text;
   }
 
   // ---------- assinatura para a interface ----------
@@ -167,6 +216,11 @@ export class GameController {
   private buildView(): GameView {
     const m = this.match;
     return {
+      mode: this.mode,
+      difficulty: this.difficulty,
+      playerNames: this.playerNames,
+      computerStatus: this.computerStatus,
+      computerTurn: this.computerTurn,
       phase: this.phase,
       turn: m.turn,
       groups: [m.groups[0], m.groups[1]],
@@ -188,6 +242,10 @@ export class GameController {
 
   private prompt(): string | null {
     if (this.phase !== 'aiming') return null;
+    if (this.computerTurn)
+      return this.computerStatus === 'aiming'
+        ? 'Computador preparando a tacada…'
+        : 'Computador analisando a mesa…';
     if (needsPocketCall(this.match, this.balls))
       return 'Toque na caçapa onde vai encaçapar a bola 8';
     if (this.match.ballInHand && this.match.isBreak)
@@ -203,11 +261,15 @@ export class GameController {
 
   // ---------- comandos ----------
   get canAct(): boolean {
+    return this.readyToShoot && !this.computerTurn;
+  }
+
+  private get readyToShoot(): boolean {
     return this.phase === 'aiming' && this.match.winner === null && !this.paused;
   }
 
   setAim(angle: number): void {
-    this.aim = angle;
+    if (this.canAct) this.aim = angle;
   }
 
   nudgeAim(delta: number): void {
@@ -222,11 +284,13 @@ export class GameController {
   }
 
   setPower(power: number): void {
+    if (this.computerTurn) return;
     this.power = Math.max(0, Math.min(1, power));
     this.emit();
   }
 
   setSpin(spin: Spin): void {
+    if (this.computerTurn) return;
     const l = Math.hypot(spin.x, spin.y);
     this.spin = l > 1 ? { x: spin.x / l, y: spin.y / l } : { ...spin };
     this.emit();
@@ -235,7 +299,10 @@ export class GameController {
   setPaused(paused: boolean): void {
     if (paused === this.paused) return;
     this.paused = paused;
-    if (paused) this.power = 0;
+    if (paused) {
+      this.power = 0;
+      this.cancelComputer();
+    }
     this.emit();
   }
 
@@ -282,6 +349,11 @@ export class GameController {
 
   shoot(): boolean {
     if (!this.canAct) return false;
+    return this.strike();
+  }
+
+  private strike(): boolean {
+    if (!this.readyToShoot) return false;
     if (this.power < 0.03) {
       this.setPower(0);
       return false;
@@ -331,9 +403,12 @@ export class GameController {
     } else if (this.phase === 'aiming' && !this.paused && this.match.winner === null) {
       this.clock -= dt;
       if (this.clock <= 0) this.onShotClock();
-      else if (Math.abs(this.clock - this.lastClockEmit) > 0.1) {
-        this.lastClockEmit = this.clock;
-        this.emit();
+      else {
+        if (this.computerTurn) this.tickComputer(dt);
+        if (Math.abs(this.clock - this.lastClockEmit) > 0.1) {
+          this.lastClockEmit = this.clock;
+          this.emit();
+        }
       }
     }
     if (this.falling.length) {
@@ -355,6 +430,7 @@ export class GameController {
   }
 
   private applyOutcome(state: MatchState, outcome: ShotOutcome): void {
+    this.cancelComputer();
     if (outcome.respotEight) {
       const eight = this.balls[EIGHT_BALL]!;
       placeBall(eight, this.balls, this.table, this.table.footSpot, {
@@ -377,13 +453,131 @@ export class GameController {
 
     if (outcome.gameOver) {
       this.phase = 'over';
-      this.winnerText = gameOverText(outcome.gameOver.reason, outcome.gameOver.winner);
-      this.showToast(`${PLAYER_NAMES[outcome.gameOver.winner]} venceu!`, 'success');
+      this.winnerText = this.describePlayer(
+        gameOverText(outcome.gameOver.reason, outcome.gameOver.winner),
+      );
+      this.showToast(`${this.playerNames[outcome.gameOver.winner]} venceu!`, 'success');
       return;
     }
     this.phase = 'aiming';
     this.autoAim();
     const { text, tone } = describeOutcome(outcome, state.turn);
-    this.showToast(text, tone);
+    this.showToast(this.describePlayer(text), tone);
+  }
+
+  private snapshot(): AiSnapshot {
+    return {
+      balls: cloneAiBalls(this.balls),
+      table: this.table,
+      match: { ...this.match, groups: [...this.match.groups] },
+      difficulty: this.difficulty,
+      seed: Math.floor(this.random() * 0x100000000),
+    };
+  }
+
+  private cancelComputer(): void {
+    this.computerGeneration++;
+    this.computerTask?.cancel();
+    this.computerTask = null;
+    this.computerPlan = null;
+    this.computerStatus = 'idle';
+    this.computerElapsed = 0;
+    this.computerAimElapsed = 0;
+  }
+
+  private beginComputer(): void {
+    const snapshot = this.snapshot();
+    const generation = ++this.computerGeneration;
+    this.computerStatus = 'thinking';
+    this.computerElapsed = 0;
+    const accept = (plan: AiPlan | null) => {
+      if (generation !== this.computerGeneration || !this.computerTurn || !this.readyToShoot)
+        return;
+      this.computerTask = null;
+      this.prepareComputerPlan(plan ?? emergencyComputerPlan(snapshot));
+    };
+    try {
+      if (!this.computerPlanner) {
+        accept(emergencyComputerPlan(snapshot));
+        return;
+      }
+      this.computerTask = this.computerPlanner(snapshot);
+      this.computerTask.result.then(accept, () => {
+        if (generation === this.computerGeneration) accept(emergencyComputerPlan(snapshot));
+      });
+    } catch {
+      accept(emergencyComputerPlan(snapshot));
+    }
+    this.emit();
+  }
+
+  private prepareComputerPlan(plan: AiPlan | null): void {
+    if (!plan) return; // Sem alvos num estado inválido, o relógio ainda resolve a vez.
+    const input = plan.input;
+    const valid =
+      Number.isFinite(input.angle) &&
+      Number.isFinite(input.power) &&
+      input.power >= 0.03 &&
+      input.power <= 1 &&
+      Number.isFinite(input.spin.x) &&
+      Number.isFinite(input.spin.y) &&
+      Math.hypot(input.spin.x, input.spin.y) <= 1 &&
+      (plan.calledPocket === null ||
+        this.table.pockets.some((pocket) => pocket.id === plan.calledPocket)) &&
+      (!needsPocketCall(this.match, this.balls) || plan.calledPocket !== null);
+    if (!valid) {
+      this.prepareEmergencyPlan();
+      return;
+    }
+    if (plan.cuePosition) {
+      if (
+        !this.match.ballInHand ||
+        !Number.isFinite(plan.cuePosition.x) ||
+        !Number.isFinite(plan.cuePosition.y) ||
+        !isValidPlacement(this.balls, this.table, plan.cuePosition, this.placementArea)
+      ) {
+        this.prepareEmergencyPlan();
+        return;
+      }
+      this.cueBall.x = plan.cuePosition.x;
+      this.cueBall.y = plan.cuePosition.y;
+    }
+    this.computerPlan = plan;
+    this.lastComputerPlan = plan;
+    this.computerStatus = 'aiming';
+    this.computerAimElapsed = 0;
+    this.aim = input.angle;
+    this.spin = { ...input.spin };
+    this.match = { ...this.match, calledPocket: plan.calledPocket };
+    this.emit();
+  }
+
+  private prepareEmergencyPlan(): void {
+    const plan = emergencyComputerPlan(this.snapshot());
+    if (plan) this.prepareComputerPlan(plan);
+  }
+
+  private tickComputer(dt: number): void {
+    if (this.computerStatus === 'idle') this.beginComputer();
+    this.computerElapsed += dt;
+    if (this.computerStatus === 'thinking' && this.computerElapsed >= 8) {
+      // Uma busca lenta ou um worker sem resposta nunca deixa a partida presa.
+      this.cancelComputer();
+      this.prepareEmergencyPlan();
+    }
+    if (this.computerStatus !== 'aiming' || !this.computerPlan) return;
+    this.computerAimElapsed += dt;
+    this.power = this.computerPlan.input.power * Math.min(1, this.computerAimElapsed / 0.65);
+    if (this.computerAimElapsed >= 0.85) {
+      this.power = this.computerPlan.input.power;
+      this.computerPlan = null;
+      this.computerStatus = 'idle';
+      this.strike();
+    }
+  }
+
+  /** Cancela buscas ao desmontar; pode ser reativado pelo próximo tick (React StrictMode). */
+  dispose(): void {
+    this.cancelComputer();
   }
 }

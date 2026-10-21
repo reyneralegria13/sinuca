@@ -1,6 +1,7 @@
 import type { GameView } from '../game/GameController';
 import { PlayerCard } from './PlayerCard';
 import { Icon } from './Icon';
+import { AI_DIFFICULTIES } from '@sinuca/core';
 
 interface Props {
   view: GameView;
@@ -22,7 +23,10 @@ export function Hud({ view, muted, onNewGame, onToggleSound, onHelp, onSettings 
           </span>
         </div>
         <span className="local-badge">
-          <i /> Partida local · 2 jogadores
+          <i />{' '}
+          {view.mode === 'computer'
+            ? `Contra o computador · ${AI_DIFFICULTIES[view.difficulty].label}`
+            : 'Partida local · 2 jogadores'}
         </span>
         <div className="hud-buttons">
           <button
@@ -64,7 +68,9 @@ export function Hud({ view, muted, onNewGame, onToggleSound, onHelp, onSettings 
         <div className="match-center">
           <span className="eyebrow">8 BOLAS</span>
           <strong>VS</strong>
-          <span>Mesa livre</span>
+          <span>
+            {view.mode === 'computer' ? AI_DIFFICULTIES[view.difficulty].label : 'Mesa livre'}
+          </span>
         </div>
         <PlayerCard player={1} view={view} />
       </div>

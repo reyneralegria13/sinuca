@@ -87,7 +87,8 @@ export class AimGuide {
 
   update(game: GameController, time: number, draggingCue: boolean): void {
     this.hideAll();
-    if (!game.canAct) return;
+    if (!game.canAct && !(game.computerTurn && game.computerStatus === 'aiming' && !game.paused))
+      return;
     const cue = game.cueBall;
     const m = game.match;
 

@@ -3,7 +3,10 @@ import { Dialog } from './Dialog';
 export function HelpDialog({ onClose }: { onClose(): void }) {
   return (
     <Dialog id="help-title" title="Sua próxima boa jogada" onClose={onClose}>
-      <p>Dois jogadores, uma mesa. Encaçape seu grupo e finalize com a bola 8.</p>
+      <p>
+        Enfrente o computador ou jogue com alguém neste aparelho. Encaçape seu grupo e finalize com
+        a bola 8.
+      </p>
       <ol className="help-steps">
         <li>
           <strong>Encontre o ângulo</strong>
