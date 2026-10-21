@@ -10,6 +10,11 @@ export function bindKeyboard(game: GameController, isBlocked: () => boolean): ()
 
   const pump = () => {
     if (charging === null) return;
+    if (isBlocked() || !game.canAct) {
+      charging = null;
+      game.setPower(0);
+      return;
+    }
     const k = ((performance.now() - charging) / 1400) % 2;
     game.setPower(k < 1 ? k : 2 - k);
     raf = requestAnimationFrame(pump);
@@ -17,6 +22,11 @@ export function bindKeyboard(game: GameController, isBlocked: () => boolean): ()
 
   const down = (e: KeyboardEvent) => {
     if (isBlocked()) return;
+    if (
+      e.target instanceof HTMLElement &&
+      e.target.closest('button, input, select, textarea, [role="dialog"]')
+    )
+      return;
     const step = e.shiftKey ? 0.02 : 0.0025;
     if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
       game.nudgeAim(-step);
@@ -37,14 +47,23 @@ export function bindKeyboard(game: GameController, isBlocked: () => boolean): ()
     if (e.code !== 'Space' || charging === null) return;
     charging = null;
     cancelAnimationFrame(raf);
-    game.shoot();
+    if (!isBlocked() && game.canAct) game.shoot();
+    else game.setPower(0);
+  };
+
+  const cancel = () => {
+    charging = null;
+    cancelAnimationFrame(raf);
+    game.setPower(0);
   };
 
   window.addEventListener('keydown', down);
   window.addEventListener('keyup', up);
+  window.addEventListener('blur', cancel);
   return () => {
     window.removeEventListener('keydown', down);
     window.removeEventListener('keyup', up);
+    window.removeEventListener('blur', cancel);
     cancelAnimationFrame(raf);
   };
 }

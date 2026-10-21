@@ -21,6 +21,8 @@ export function PowerBar({
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(power * 100)}
+      aria-disabled={!game.canAct}
+      aria-orientation={vertical ? 'vertical' : 'horizontal'}
       tabIndex={0}
       onPointerDown={(e) => {
         if (!game.canAct) return;
@@ -29,6 +31,10 @@ export function PowerBar({
       }}
       onPointerMove={(e) => {
         if (!start.current) return;
+        if (!game.canAct) {
+          start.current = null;
+          return;
+        }
         const r = e.currentTarget.getBoundingClientRect();
         const d = vertical
           ? (e.clientY - start.current.y) / (r.height * 0.8)

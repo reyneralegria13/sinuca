@@ -203,7 +203,7 @@ export class GameController {
 
   // ---------- comandos ----------
   get canAct(): boolean {
-    return this.phase === 'aiming' && this.match.winner === null;
+    return this.phase === 'aiming' && this.match.winner === null && !this.paused;
   }
 
   setAim(angle: number): void {
@@ -215,6 +215,7 @@ export class GameController {
   }
 
   aimAt(point: Vec2): void {
+    if (!this.canAct) return;
     const c = this.cueBall;
     if (Math.hypot(point.x - c.x, point.y - c.y) > BALL_RADIUS * 0.6)
       this.aim = Math.atan2(point.y - c.y, point.x - c.x);
@@ -232,7 +233,10 @@ export class GameController {
   }
 
   setPaused(paused: boolean): void {
+    if (paused === this.paused) return;
     this.paused = paused;
+    if (paused) this.power = 0;
+    this.emit();
   }
 
   isLegalTarget(ballId: number): boolean {
@@ -320,6 +324,7 @@ export class GameController {
 
   // ---------- laço ----------
   tick(dt: number): void {
+    if (this.paused) return;
     if (this.phase === 'rolling') {
       this.accumulator = advance(this.sim, this.accumulator + dt, this.events);
       if (!isMoving(this.balls) && this.falling.length === 0) this.finishShot();

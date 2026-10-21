@@ -21,7 +21,7 @@ export function TableView({ game, onInteract }: { game: GameController; onIntera
     let raf = 0;
     let last = performance.now();
     const frame = (t: number) => {
-      const dt = Math.min(0.05, (t - last) / 1000);
+      const dt = Math.max(0, Math.min(0.05, (t - last) / 1000));
       last = t;
       game.tick(dt);
       scene.render(t);

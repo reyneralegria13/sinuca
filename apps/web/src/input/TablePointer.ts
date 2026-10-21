@@ -49,6 +49,10 @@ export class TablePointer {
 
   private move = (e: PointerEvent) => {
     if (!this.mode) return;
+    if (!this.game.canAct) {
+      this.up();
+      return;
+    }
     const p = this.view.pick(e.clientX, e.clientY);
     if (!p) return;
     if (this.mode === 'cue') this.game.placeCue(p);

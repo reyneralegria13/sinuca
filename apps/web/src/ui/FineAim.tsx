@@ -30,6 +30,9 @@ export function FineAim({ game, vertical }: { game: GameController; vertical: bo
       onPointerUp={() => (last.current = null)}
       onPointerCancel={() => (last.current = null)}
       onKeyDown={(e) => {
+        if (!e.key.startsWith('Arrow')) return;
+        e.preventDefault();
+        e.stopPropagation();
         if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') game.nudgeAim(-0.002);
         if (e.key === 'ArrowDown' || e.key === 'ArrowRight') game.nudgeAim(0.002);
       }}
