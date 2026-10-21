@@ -10,3 +10,5 @@ export * from './table';
 export * from './physics';
 export * from './aim/predict';
 export * from './rules';
+export * from './ai/types';
+export * from './ai/planner';
