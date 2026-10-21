@@ -1,0 +1,33 @@
+{
+  "seed": 2026,
+  "description": "Autopartida de até 8 tacadas por nível; não é uma estimativa de taxa de vitória.",
+  "results": [
+    {
+      "difficulty": "easy",
+      "shots": 8,
+      "simulations": 143,
+      "pocketed": 3,
+      "fouls": 1,
+      "averageMs": 392,
+      "winner": null
+    },
+    {
+      "difficulty": "medium",
+      "shots": 8,
+      "simulations": 269,
+      "pocketed": 4,
+      "fouls": 0,
+      "averageMs": 694,
+      "winner": null
+    },
+    {
+      "difficulty": "hard",
+      "shots": 8,
+      "simulations": 465,
+      "pocketed": 5,
+      "fouls": 0,
+      "averageMs": 1157,
+      "winner": null
+    }
+  ]
+}

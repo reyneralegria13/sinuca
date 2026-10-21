@@ -36,7 +36,7 @@ Princípios:
 | `game/`   | `GameController`: liga simulação, regras, relógio, mira e sons. Expõe um `GameView` para o React |
 | `render/` | Cena Three.js: materiais, texturas procedurais, mesa, bolas, taco, linha de mira                 |
 | `input/`  | Toque/mouse na mesa e teclado                                                                    |
-| `audio/`  | Sons sintetizados com Web Audio (sem arquivos)                                                   |
+| `audio/`  | Amostras CC0 com Web Audio, intensidade por impacto, panorama, volume e fallback sintetizado     |
 | `ui/`     | Componentes React: placar, força, mira fina, efeito, avisos                                      |
 | `styles/` | Tokens de design e estilos                                                                       |
 
