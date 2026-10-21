@@ -38,10 +38,10 @@ import { describeOutcome, gameOverText, PLAYER_NAMES, type ToastTone } from './m
 export type Phase = 'aiming' | 'rolling' | 'over';
 
 export interface GameAudio {
-  cue(speed: number): void;
-  ball(speed: number): void;
-  cushion(speed: number): void;
-  pocket(): void;
+  cue(speed: number, pan?: number): void;
+  ball(speed: number, pan?: number): void;
+  cushion(speed: number, pan?: number): void;
+  pocket(pan?: number): void;
 }
 
 export interface FallingBall {
@@ -108,16 +108,16 @@ export class GameController {
   private readonly events: SimulationEvents = {
     onBallContact: (a, b, speed) => {
       this.recorder?.onBallContact(a, b);
-      this.audio?.ball(speed);
+      this.audio?.ball(speed, (a.x + b.x) / this.table.spec.length - 1);
     },
     onCushionContact: (ball, speed) => {
       this.recorder?.onCushionContact(ball);
-      this.audio?.cushion(speed);
+      this.audio?.cushion(speed, (ball.x / this.table.spec.length) * 2 - 1);
     },
     onPocket: (ball, pocket) => {
       this.recorder?.onPocket(ball, pocket);
       this.falling.push({ ball, pocket, from: { x: ball.x, y: ball.y }, t: 0 });
-      this.audio?.pocket();
+      this.audio?.pocket((pocket.center.x / this.table.spec.length) * 2 - 1);
       this.emit();
     },
   };
@@ -293,7 +293,7 @@ export class GameController {
       power: this.power,
       spin: this.spin,
     });
-    this.audio?.cue(speed);
+    this.audio?.cue(speed, (this.cueBall.x / this.table.spec.length) * 2 - 1);
     this.match = { ...this.match, ballInHand: false };
     this.phase = 'rolling';
     this.power = 0;
